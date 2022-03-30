@@ -32,20 +32,20 @@ Additionally, this project will output a dictionary of dataframes and a dictiona
 
 ```python
 # populate watchlist from a csv file
-watchlist = pop_watchlist(open_path=None, open_file=None)
-print(watchlist)
+>>> watchlist = pop_watchlist(open_path=None, open_file=None)
+>>> print(watchlist)
 
-> ['SPY', 'QQQ', 'DIA', 'UVXY']
+['SPY', 'QQQ', 'DIA', 'UVXY']
 ```
 
 Use `download_ticker_data()` to download 4 weeks of 1 minute intraday data for the specified watchlist and save in individual csv files at the given file path.
 
 ```python
 # specify the number of weeks for which to update watchlist (max is 4, min is 1)
-file_path = ".\\Watchlist\\Test\\"
-weeks = 4
+>>> file_path = ".\\Watchlist\\Test\\"
+>>> weeks = 4
 
-download_ticker_data(watchlist, file_path, weeks)
+>>> download_ticker_data(watchlist, file_path, weeks)
 
 New: SPY
 [*********************100%***********************]  1 of 1 completed
@@ -58,16 +58,15 @@ SPY data written to csv file
 .
 .
 
-> 'All data downloaded'
+'All data downloaded'
 ```
 
 `pop_data_dict()` will update a data dictionary with the newly downloaded data if `data` and `ticker_dates` dictionaries are already defined. Otherwise a new data dictionary will be made from the csv files at `file_path`.  Datetime strings will be converted to timestamp objects also.
 
 ```python
-data = pop_data_dict(file_path, data=None, ticker_dates=None)
+>>> data = pop_data_dict(file_path, data=None, ticker_dates=None)
 
-data["SPY"].head()
->
+>>> data["SPY"].head()
 
              Datetime        Open        High  ...       Close   Adj Close   Volume
 0 2022-02-25 09:30:00  429.609985  429.679993  ...  429.089996  429.089996  4895990
@@ -79,9 +78,9 @@ data["SPY"].head()
 
 # Datetime column is converted to proper timestamp from string
 
-type(data["SPY"]["Datetime"][0])
+>>> type(data["SPY"]["Datetime"][0])
 
-> pandas._libs.tslibs.timestamps.Timestamp
+pandas._libs.tslibs.timestamps.Timestamp
 ```
 
 The `ticker_dates` structure can be used to quickly return the open and close indices for that day e.g. [month, day, year, open index, close index].
@@ -89,21 +88,20 @@ The `ticker_dates` structure can be used to quickly return the open and close in
 `data` must be passed as an argument and ticker_dates will be updated with new dates from the data dataframes or build from scratch if nothing is passed to the function.
 
 ```python
-ticker_dates = pop_ticker_dates(file_path, data=data, ticker_dates=None)
->
+>>> ticker_dates = pop_ticker_dates(file_path, data=data, ticker_dates=None)
+
 DIA
 QQQ
 SPY
 UVXY
 
-ticker_dates["SPY"][0]
-> [2, 25, 2022, 0, 390]
+>>> ticker_dates["SPY"][0]
+[2, 25, 2022, 0, 390]
 
-start_index = ticker_dates["SPY"][10][3]
+>>> start_index = ticker_dates["SPY"][10][3]
 
-data["SPY"].iloc[start_index]
+>>> data["SPY"].iloc[start_index]
 
-> 
 Datetime     2022-03-11 09:30:00
 Open                  428.119995
 High                  428.600006
@@ -182,30 +180,30 @@ Analysis of time taken to convert given datetime strings to the necessary indice
 
 **Datetime lookup method**
 ```python
-start_date_str = "2022-03-14 09:30"
-end_date_str = "2022-03-14 15:59"
+>>> start_date_str = "2022-03-14 09:30"
+>>> end_date_str = "2022-03-14 15:59"
 
-%timeit start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
-> 7.55 µs ± 61.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+>>> %timeit start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
+7.55 µs ± 61.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
-%timeit end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d %H:%M")
-> 7.61 µs ± 59 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+>>> %timeit end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d %H:%M")
+7.61 µs ± 59 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 ```
 
 Total preprocessing time: 7.55 + 7.61 = **15.16 µs**
 
 **`ticker_dates` lookup method**
 ```python
-start_date_str = "2022-03-14 09:30"
+>>> start_date_str = "2022-03-14 09:30"
 
-%timeit start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
-> 7.55 µs ± 61.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+>>> %timeit start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
+7.55 µs ± 61.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
-%timeit start_list = [start_date.month, start_date.day, start_date.year]
-> 107 ns ± 0.966 ns per loop (mean ± std. dev. of 7 runs, 10000000 loops each)
+>>> %timeit start_list = [start_date.month, start_date.day, start_date.year]
+107 ns ± 0.966 ns per loop (mean ± std. dev. of 7 runs, 10000000 loops each)
 
-%timeit dates_index = [ticker_dates[ticker].index(x) for x in ticker_dates[ticker] if x[:3] == start_list][0]
-> 2.88 µs ± 30.8 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+>>> %timeit dates_index = [ticker_dates[ticker].index(x) for x in ticker_dates[ticker] if x[:3] == start_list][0]
+2.88 µs ± 30.8 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 ```
 
 Total preprocessing time = 7.55 µs + 107 ns + 2.88 µs + 66.5 ns
@@ -214,9 +212,9 @@ Total preprocessing time = **10.60 µs**
 
 However if the day index is already known or we just care about iterating through all days then lookup is very fast
 ```python
-dates_index = 10
-%timeit temp_index = ticker_dates[ticker][dates_index][3]
-> 65.8 ns ± 0.229 ns per loop (mean ± std. dev. of 7 runs, 10000000 loops each)
+>>> dates_index = 10
+>>> %timeit temp_index = ticker_dates[ticker][dates_index][3]
+65.8 ns ± 0.229 ns per loop (mean ± std. dev. of 7 runs, 10000000 loops each)
 ```
 Speed improvement for preprocessing: 15 / 0.06 = 250 times faster
 
