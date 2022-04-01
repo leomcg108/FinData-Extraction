@@ -21,11 +21,13 @@ Additionally, this project will output a dictionary of dataframes and a dictiona
 * Populate a dictionary of tickers as keys and as values a list of dates and the corresponding indices for the open (9:30am EST) and close (4:00pm EST) timestamps for each day present in the ticker’s dataframes
 * Allows for quick and easy updating of stored stock market dataframes
 * Data structure allows for rapid backtesting of strategies e.g. 1 year’s worth of 1m data for a basket of 500 stocks tested in 30 seconds
+* Plot stock prices for a given ticker over a specified date range
 
 ## Dependencies
 * python
 * pandas
 * yfinance
+* matplotlib
 
 ## Example
 `pop_watchlist()` will return a default list of the major indices most popular ETFs i.e.  SPY, QQQ, DIA, UVXY. Otherwise a watchlist file can be specified with `open_path` and `open_file` function arguments
@@ -61,7 +63,7 @@ SPY data written to csv file
 'All data downloaded'
 ```
 
-`pop_data_dict()` will update a data dictionary with the newly downloaded data if `data` and `ticker_dates` dictionaries are already defined. Otherwise a new data dictionary will be made from the csv files at `file_path`.  Datetime strings will be converted to timestamp objects also.
+`pop_data_dict()` will update a data dictionary with the newly downloaded data if `data` and `ticker_dates` dictionaries are already defined. Otherwise a new `data` dictionary will be made from the csv files at `file_path`.  Datetime strings will be converted to timestamp objects also.
 
 ```python
 >>> data = pop_data_dict(file_path, data=None, ticker_dates=None)
@@ -85,7 +87,7 @@ pandas._libs.tslibs.timestamps.Timestamp
 
 The `ticker_dates` structure can be used to quickly return the open and close indices for that day e.g. [month, day, year, open index, close index].
 
-`data` must be passed as an argument and ticker_dates will be updated with new dates from the data dataframes or build from scratch if nothing is passed to the function.
+`data` must be passed as an argument and `ticker_dates` will be updated with new dates from the `data` dataframes or build from scratch if nothing is passed to the function.
 
 ```python
 >>> ticker_dates = pop_ticker_dates(file_path, data=data, ticker_dates=None)
@@ -97,6 +99,7 @@ UVXY
 
 >>> ticker_dates["SPY"][0]
 [2, 25, 2022, 0, 390]
+# [month, day, year, open index, close index]
 
 >>> start_index = ticker_dates["SPY"][10][3]
 
@@ -111,6 +114,45 @@ Adj Close             428.540009
 Volume                   3272859
 Name: 3890, dtype: object
 ```
+You can also use `slice_data()` to return a slice of the dataframe for a ticker between two dates. Defaults for `start_date` and `end_date` are the start and end of the relevant dataframe.
+
+```python
+>>> temp_data = slice_data(data=data, ticker_dates=ticker_dates, ticker="SPY", start_date="2022-03-14", end_date="2022-03-18")
+
+>>> temp_data.head(2)
+
+             Datetime        Open        High  ...       Close   Adj Close   Volume
+0 2022-03-14 09:30:00  420.890015  421.970001  ...  421.489990  421.489990  3008304
+1 2022-03-14 09:31:00  421.500000  421.920013  ...  421.779999  421.779999   389313
+
+[2 rows x 7 columns]
+
+>>> temp_data.tail(2)
+
+                Datetime        Open  ...   Adj Close   Volume
+1945 2022-03-18 15:58:00  444.329987  ...  444.220001   694944
+1946 2022-03-18 15:59:00  444.220001  ...  444.470001  2761408
+
+[2 rows x 7 columns]
+```
+
+`plot_data` is a convenient way to plot a dataframe slice for a date range for a given ticker and specified data column.
+
+```python
+>>> plot_data(data, ticker_dates, ticker="QQQ", start_time="2022-03-14", end_time=None, plot_series="Close")
+
+Data slice for QQQ
+Close-data plotted for QQQ
+```
+![QQQ Close plot](https://user-images.githubusercontent.com/102587512/161250963-29b20300-d9c3-4766-b438-6b010fc3fb76.png)
+
+```python
+>>> plot_data(data, ticker_dates, ticker="SPY", start_time="2022-03-18", end_time="2022-03-18", plot_series="Volume")
+
+Data slice for SPY
+Volume-data plotted for SPY
+```
+![SPY Volume plot](https://user-images.githubusercontent.com/102587512/161251038-5b8ffe01-5690-44fd-8224-91cd9beadcfa.png)
 
 When you’re finished working with your data you can serialize it by using the `save_pickles()` function.
 
@@ -220,10 +262,10 @@ Speed improvement for preprocessing: 15 / 0.06 = 250 times faster
 
 
 ## Future Work
-* Add function to return slices of data between two specified datetimes
-* Add plotting function for defined slices
-* Verify data has been downloaded correctly and return a list of missing days
-* Compress data function to limit memory usage for large data sets
+- ~~Add function to return slices of data between two specified datetimes~~
+- ~~Add plotting function for defined slices~~
+- Verify data has been downloaded correctly and return a list of missing days
+- Compress data function to limit memory usage for large data sets
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

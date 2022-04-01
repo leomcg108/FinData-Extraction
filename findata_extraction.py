@@ -11,6 +11,7 @@ import datetime as dt
 import pickle
 import pandas as pd
 import yfinance as yf
+import matplotlib.pyplot as plt
 
 
 def pop_watchlist(open_path=None, open_file=None):
@@ -99,7 +100,6 @@ def download_ticker_data(watchlist=None, file_path=getcwd(), weeks=4):
             update_1m_28day(ticker, file_path, 4, True)
             
     return "All data downloaded"
-
 
 def pop_data_dict(file_path=getcwd(), data=None, ticker_dates=None):
     """
@@ -261,6 +261,61 @@ def save_pickles(file_path, data, data_name, ticker_dates, ticker_dates_name):
     filehandler = open(dates_out, "wb")
     pickle.dump(ticker_dates, filehandler)
     filehandler.close()
+    
+    return
+
+
+def slice_data(data, ticker_dates, ticker=None, start_date=None, end_date=None):
+    """Returns a slice between the given dates for the given ticker"""
+    
+    if ticker is None:
+        ticker = list(data.keys())[0]
+    if ticker not in data.keys():
+        print(f"{ticker} not found in data")
+        return None
+
+    if start_date is None:
+        start_index = ticker_dates[ticker][0][3]
+    else:
+        start = start_date.split("-")
+        start_list = [int(start[1]), int(start[2]), int(start[0])]   
+        start_index = [x[3] for x in ticker_dates[ticker] if x[:3] == start_list][0]
+    
+    if end_date is None:
+        end_index = ticker_dates[ticker][-1][4]
+    else:
+        end = end_date.split("-")
+        end_list = [int(end[1]), int(end[2]), int(end[0])]
+        end_index = [x[4] for x in ticker_dates[ticker] if x[:3] == end_list][0]
+    
+    temp = data[ticker][start_index:end_index]
+    temp = temp.reset_index(drop=True)
+    print(f"Data slice for {ticker}")
+    
+    return temp
+
+
+def plot_data(data, ticker_dates, ticker=None, start_time=None, end_time=None,
+              plot_series="Close"):
+    """Plot data for a given ticker and datetime range"""
+    
+    if ticker is None:
+        ticker = list(data.keys())[0]
+    if ticker not in data.keys():
+        print(f"{ticker} not found in data")
+        return None
+    
+    plot_data = slice_data(data, ticker_dates, ticker, start_time, 
+                           end_time)
+    
+    plt.plot(plot_data[plot_series], label=ticker)
+    plt.xlabel("Index (min)")
+    if plot_series == "Volume":
+        plt.ylabel("Volume")
+    else:
+        plt.ylabel("Stock Price (USD)")
+    plt.legend()
+    print(f"{plot_series}-data plotted for {ticker}")
     
     return
 
