@@ -22,6 +22,8 @@ Additionally, this project will output a dictionary of dataframes and a dictiona
 * Allows for quick and easy updating of stored stock market dataframes
 * Data structure allows for rapid backtesting of strategies e.g. 1 year’s worth of 1m data for a basket of 500 stocks tested in 30 seconds
 * Plot stock prices for a given ticker over a specified date range
+* Downcast dataframe dictionary to reduce memory usage
+* Check downloaded data for missing days and missing minutes
 
 ## Dependencies
 * python
@@ -30,24 +32,31 @@ Additionally, this project will output a dictionary of dataframes and a dictiona
 * matplotlib
 
 ## Example
-`pop_watchlist()` will return a default list of the major indices most popular ETFs i.e.  SPY, QQQ, DIA, UVXY. Otherwise a watchlist file can be specified with `open_path` and `open_file` function arguments
+Create an instance of the class `FinDataExtract` and define a path to access or save csv files
+```python
+>>> fde = FinDataExtract()
+>>> file_path = ".\\Watchlist\\Test\\"
+>>> fde.set_file_path(file_path)
+>>> fde.file_path
+".\\Watchlist\\Test\\"
+```
+
+The `pop_watchlist()` method will return a default list of the major indices most popular ETFs i.e.  SPY, QQQ, DIA, UVXY. Otherwise a watchlist file can be specified with the `watchlist_path` argument.
 
 ```python
 # populate watchlist from a csv file
->>> watchlist = pop_watchlist(open_path=None, open_file=None)
+>>> watchlist = fde.pop_watchlist()
 >>> print(watchlist)
 
 ['SPY', 'QQQ', 'DIA', 'UVXY']
 ```
 
-Use `download_ticker_data()` to download 4 weeks of 1 minute intraday data for the specified watchlist and save in individual csv files at the given file path.
+Use `download_ticker_data()` to download 4 weeks of 1 minute intraday data for the specified watchlist and save in individual csv files at the previously specified `file_path`.
 
 ```python
-# specify the number of weeks for which to update watchlist (max is 4, min is 1)
->>> file_path = ".\\Watchlist\\Test\\"
+# specify the number of weeks for which to update watchlist (max is 4, min is 1). For new tickers the default is 4 weeks
 >>> weeks = 4
-
->>> download_ticker_data(watchlist, file_path, weeks)
+>>> fde.download_ticker_data(weeks)
 
 New: SPY
 [*********************100%***********************]  1 of 1 completed
@@ -63,10 +72,11 @@ SPY data written to csv file
 'All data downloaded'
 ```
 
-`pop_data_dict()` will update a data dictionary with the newly downloaded data if `data` and `ticker_dates` dictionaries are already defined. Otherwise a new `data` dictionary will be made from the csv files at `file_path`.  Datetime strings will be converted to timestamp objects also.
+`pop_data_dict()` will update a data dictionary with the newly downloaded data if `data` and `ticker_dates` dictionaries have been passed as arguments during class instantiation. Otherwise a new `data` dictionary will be made from the csv files at `file_path`.  Datetime strings will be converted to timestamp objects also.
 
 ```python
->>> data = pop_data_dict(file_path, data=None, ticker_dates=None)
+>>> fde.pop_data_dict()
+>>> data = fde.data
 
 >>> data["SPY"].head()
 
@@ -87,15 +97,17 @@ pandas._libs.tslibs.timestamps.Timestamp
 
 The `ticker_dates` structure can be used to quickly return the open and close indices for that day e.g. [month, day, year, open index, close index].
 
-`data` must be passed as an argument and `ticker_dates` will be updated with new dates from the `data` dataframes or build from scratch if nothing is passed to the function.
+`fde.ticker_dates` will be updated with new dates from the `fde.data` dataframes or built from scratch if nothing was passed during instantiation.
 
 ```python
->>> ticker_dates = pop_ticker_dates(file_path, data=data, ticker_dates=None)
+>>> fde.pop_ticker_dates()
 
 DIA
 QQQ
 SPY
 UVXY
+
+>>> ticker_dates = fde.ticker_dates
 
 >>> ticker_dates["SPY"][0]
 [2, 25, 2022, 0, 390]
@@ -114,10 +126,73 @@ Adj Close             428.540009
 Volume                   3272859
 Name: 3890, dtype: object
 ```
-You can also use `slice_data()` to return a slice of the dataframe for a ticker between two dates. Defaults for `start_date` and `end_date` are the start and end of the relevant dataframe.
+Verify that all the requested data was in fact downloaded correctly by using the `pde.verify_data()` method. This method returns a dictionary with ticker keys and a list of dates that are not in the dataframe. The `minute_check` flag is set to False by default but when set to True will return a dictionary of tickers and a list of tuples with dates and the number of missing minutes.
 
 ```python
->>> temp_data = slice_data(data=data, ticker_dates=ticker_dates, ticker="SPY", start_date="2022-03-14", end_date="2022-03-18")
+>>> day_check, minute_test = fde.verify_data(minute_check=True)
+>>> print(day_check)
+# Example output of missing days of data
+{'TQQQ': datetime.date(2022, 2, 28),
+  datetime.date(2022, 3, 4),
+  datetime.date(2022, 3, 1),
+  datetime.date(2022, 3, 2)]}
+
+>>> print(minute_test)
+# Days with missing minutes and the number of missing minutes
+{'DIA': [(datetime.date(2022, 3, 9), 7),
+  (datetime.date(2022, 3, 10), 2),
+  (datetime.date(2022, 3, 17), 1),
+  (datetime.date(2022, 3, 22), 1)
+.
+.
+.
+```
+In certain cases perhaps it may be simply better to have data for a single ticker organised by days. The `data_by_date` date method will, for a specified ticker, return a dictionary with key dates (as datetime objects) and values as the corresponding day’s data in the form of a dataframe.
+
+
+```python
+
+>>> dia = fde.data_by_date("DIA")
+>>> dia[dt.date(2022, 3, 14)].reset_index(drop=True).head(2)
+
+             Datetime        Open        High  ...       Close   Adj Close    Volume
+0 2022-03-14 09:30:00  331.750000  332.519989  ...  332.130005  332.130005  213090.0
+1 2022-03-14 09:31:00  332.170013  332.380005  ...  332.179993  332.179993   23337.0
+
+[2 rows x 7 columns]
+```
+Reduce the burden on system memory by downcasting the numerical OHLC values from float64 to float32 with the `downcast_data` method.
+
+```python
+>>> dia[dt.date(2022, 3, 14)].memory_usage(deep=True)
+Index         132
+Datetime     3120
+Open         3120
+High         3120
+Low          3120
+Close        3120
+Adj Close    3120
+Volume       3120
+dtype: int64
+
+>>> fde.downcast_data(dia)
+>>> dia[dt.date(2022, 3, 14)].memory_usage(deep=True)
+Index         132
+Datetime     3120
+Open         1560
+High         1560
+Low          1560
+Close        1560
+Adj Close    1560
+Volume       3120
+dtype: int64
+
+```
+
+You can also use `fde.slice_data()` to return a slice of the dataframe for a ticker between two dates. Defaults for `start_date` and `end_date` are the start and end of the relevant dataframe.
+
+```python
+>>> temp_data = slice_data(ticker="SPY", start_date="2022-03-14", end_date="2022-03-18")
 
 >>> temp_data.head(2)
 
@@ -139,7 +214,7 @@ You can also use `slice_data()` to return a slice of the dataframe for a ticker 
 `plot_data` is a convenient way to plot a dataframe slice for a date range for a given ticker and specified data column.
 
 ```python
->>> plot_data(data, ticker_dates, ticker="QQQ", start_time="2022-03-14", end_time=None, plot_series="Close")
+>>> plot_data(ticker="QQQ", start_time="2022-03-14", end_time=None, plot_series="Close")
 
 Data slice for QQQ
 Close-data plotted for QQQ
@@ -147,7 +222,7 @@ Close-data plotted for QQQ
 ![QQQ Close plot](https://user-images.githubusercontent.com/102587512/161250963-29b20300-d9c3-4766-b438-6b010fc3fb76.png)
 
 ```python
->>> plot_data(data, ticker_dates, ticker="SPY", start_time="2022-03-18", end_time="2022-03-18", plot_series="Volume")
+>>> plot_data(ticker="SPY", start_time="2022-03-18", end_time="2022-03-18", plot_series="Volume")
 
 Data slice for SPY
 Volume-data plotted for SPY
@@ -160,7 +235,7 @@ When you’re finished working with your data you can serialize it by using the 
 data_name = “full_data.pickle”
 ticker_dates_name = “all_ticker_dates.pickle”
 
-save_pickles(file_path, data, data_name, ticker_dates, ticker_dates_name)
+save_pickles(pickle_path=".//Example", data_name, ticker_dates_name)
 ```
 Reload in your next session with `load_pickles()`
 
@@ -168,7 +243,7 @@ Reload in your next session with `load_pickles()`
 data_name = “full_data.pickle”
 ticker_dates_name = “all_ticker_dates.pickle”
 
-data, ticker_dates = load_pickles(file_path, data_name, ticker_dates_name)
+data, ticker_dates = load_pickles(pickle_path=".//Example", data_name, ticker_dates_name)
 ```
 
 ## Speed Comparison
@@ -229,7 +304,8 @@ Analysis of time taken to convert given datetime strings to the necessary indice
 7.55 µs ± 61.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
 >>> %timeit end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d %H:%M")
-7.61 µs ± 59 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+7.61
+ µs ± 59 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 ```
 
 Total preprocessing time: 7.55 + 7.61 = **15.16 µs**
@@ -264,8 +340,9 @@ Speed improvement for preprocessing: 15 / 0.06 = 250 times faster
 ## Future Work
 - ~~Add function to return slices of data between two specified datetimes~~
 - ~~Add plotting function for defined slices~~
-- Verify data has been downloaded correctly and return a list of missing days
-- Compress data function to limit memory usage for large data sets
+- ~~Verify data has been downloaded correctly and return a list of missing days~~
+- ~~Compress data function to limit memory usage for large data sets~~
+- Add support for different timeframes, e.g. 5 minute bar data
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
