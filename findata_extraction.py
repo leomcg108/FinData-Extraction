@@ -2,6 +2,8 @@
 """
 Created on Thu Mar 24 18:59:16 2022
 
+https://github.com/leomcg108/FinData-Extraction
+
 @author: Leo
 """
 
