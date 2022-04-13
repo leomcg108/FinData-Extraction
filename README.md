@@ -343,6 +343,7 @@ Speed improvement for preprocessing: 15 / 0.06 = 250 times faster
 - ~~Verify data has been downloaded correctly and return a list of missing days~~
 - ~~Compress data function to limit memory usage for large data sets~~
 - Add support for different timeframes, e.g. 5 minute bar data
+- Add options for MultiIndex in pandas dataframes to replace ticker_dates
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
